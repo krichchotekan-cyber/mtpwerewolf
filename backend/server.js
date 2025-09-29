@@ -1,49 +1,20 @@
 // server.js - Werewolf Game Backend Server (Updated)
 const express = require('express');
 const http = require('http');
-const path = require('path'); // ⭐ ต้องเพิ่ม: สำหรับจัดการพาธไฟล์
 const { Server } = require('socket.io');
 const cors = require('cors');
 
-// ⭐ กำหนด PORT ที่ยืดหยุ่นสำหรับ Local และ Production (Render)
-const PORT = process.env.PORT || 3001; 
-
 const app = express();
 const server = http.createServer(app);
-
-// 1. ตั้งค่า CORS สำหรับ HTTP (Express)
-// หากคุณมี Frontend แยกต่างหาก และ Backend มี API
-// การใช้ cors() ทั่วไปอาจจะพอ แต่ควรระบุ origin ให้ชัดเจนขึ้น
-app.use(cors({
-    origin: process.env.FRONTEND_URL || '*', // ใช้ตัวแปร ENV หรืออนุญาตทั้งหมด (ไม่แนะนำสำหรับ Production จริง)
-    methods: ["GET", "POST"]
-}));
-app.use(express.json());
-
-// 2. ⭐ ตั้งค่า Static Files (สำหรับ Frontend)
-// ชี้ให้ Express Serve ไฟล์ในโฟลเดอร์ frontend
-const frontendPath = path.join(__dirname, 'frontend');
-app.use(express.static(frontendPath));
-
-// 3. ⭐ ตั้งค่า Route หลัก (index.html)
-// เมื่อเข้าสู่ URL หลัก ให้ส่งไฟล์ index.html กลับไป
-app.get('/', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'index.html'));
-});
-
-// 4. ตั้งค่า Socket.IO (สำหรับ Real-time)
-// CORS ของ Socket.IO ควรใช้การตั้งค่าเดียวกับ Express เพื่อความสอดคล้องกัน
 const io = new Server(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL || '*', // ใช้ตัวแปร ENV เดียวกัน
-    methods: ["GET", "POST"]
-  }
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
 });
 
-// ⭐ 5. เริ่ม Server ด้วย PORT ที่กำหนด
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.use(cors());
+app.use(express.json());
 
 // Game State Storage
 const rooms = new Map();
@@ -1001,4 +972,5 @@ server.listen(PORT, () => {
   console.log(`   - Day: ${PHASE_DURATIONS.day / 1000}s`);
   console.log(`   - Voting: ${PHASE_DURATIONS.voting / 1000}s`);
 });
+
 
