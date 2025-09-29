@@ -1,0 +1,2303 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MTP WEREWOLF ONLINE - เกมหมาป่าออนไลน์</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Kanit', sans-serif;
+  }
+
+  body {
+    min-height: 100vh;
+    background-color: #3f3535;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    color: #f5f5dc;
+    display: flex;
+    flex-direction: column;
+    transition: background-image 0.8s ease;
+  }
+  
+  body.day { 
+    background-image: url('img/Day.png');
+  }
+  
+  body.night { 
+    background-image: url('img/Night.png');
+  }
+
+  @keyframes shakeCard {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    50% { transform: translateX(0); }
+    75% { transform: translateX(5px); }
+  }
+
+  .shake-animation {
+    animation: shakeCard 0.5s ease-in-out;
+  }
+
+  header {
+    background: rgba(15, 10, 10, 0.85);
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-bottom: 4px solid #8b4513;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+    position: relative;
+  }
+
+  .header-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    max-width: 1000px;
+  }
+
+  header h1 {
+    font-size: 2.2rem;
+    color: #ffeb3b;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+    text-align: center;
+  }
+
+  .connection-status {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    z-index: 9999;
+    font-weight: bold;
+  }
+
+  .connected {
+    background: #4caf50;
+    color: white;
+  }
+
+  .disconnected {
+    background: #f44336;
+    color: white;
+  }
+
+  .timer-display {
+    background: linear-gradient(135deg, rgba(0,0,0,0.8), rgba(20,20,20,0.8));
+    color: #ffeb3b;
+    padding: 0.8rem 1.2rem;
+    border-radius: 15px;
+    border: 2px solid #b7905b;
+    font-size: 1rem;
+    font-weight: bold;
+    text-align: center;
+    min-width: 120px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+  }
+  
+  .timer-display .timer-label {
+    font-size: 0.8rem;
+    opacity: 0.8;
+    margin-bottom: 0.3rem;
+  }
+  
+  .timer-display .timer-time {
+    font-size: 1.4rem;
+    color: #ff6b6b;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+  }
+
+  .container {
+    flex: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    width: 100%;
+  }
+
+  .lobby-section {
+    display: block;
+  }
+
+  .user-info {
+    background: rgba(0,0,0,0.3);
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+    border: 2px solid #8b4513;
+    backdrop-filter: blur(10px);
+  }
+
+  .nickname-input {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .nickname-input input {
+    flex: 1;
+    padding: 0.8rem;
+    border: 2px solid #5d4037;
+    border-radius: 8px;
+    background: #f5f5dc;
+    color: #333;
+    font-size: 1rem;
+  }
+
+  .btn {
+    padding: 0.8rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    font-family: 'Kanit', sans-serif;
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #4caf50, #45a049);
+    color: white;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+  }
+
+  .btn-danger {
+    background: linear-gradient(135deg, #ff4444, #cc0000);
+    color: white;
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255, 68, 68, 0.4);
+  }
+
+  .btn-secondary {
+    background: linear-gradient(135deg, #666, #444);
+    color: white;
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 102, 102, 0.4);
+  }
+
+  .room-actions {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .create-room-form {
+    background: rgba(0,0,0,0.5);
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+    border: 2px solid #8b4513;
+    backdrop-filter: blur(10px);
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .form-group label {
+    font-weight: bold;
+    color: #ffeb3b;
+  }
+
+  .form-group input, .form-group select {
+    padding: 0.8rem;
+    border: 2px solid #5d4037;
+    border-radius: 8px;
+    background: #f5f5dc;
+    color: #333;
+    font-size: 1rem;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .form-row .form-group {
+    flex: 1;
+  }
+
+  .rooms-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .room-card {
+    background: rgba(0,0,0,0.5);
+    border: 2px solid #8b4513;
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+  }
+
+  .room-card:hover {
+    transform: translateY(-5px);
+    border-color: #ffeb3b;
+    box-shadow: 0 8px 25px rgba(255, 235, 59, 0.3);
+  }
+
+  .room-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .room-name {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #ffeb3b;
+  }
+
+  .room-status {
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+
+  .status-waiting {
+    background: #4caf50;
+    color: white;
+  }
+
+  .status-playing {
+    background: #ff9800;
+    color: white;
+  }
+
+  .status-full {
+    background: #f44336;
+    color: white;
+  }
+
+  .room-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+
+  .players-info {
+    color: #ccc;
+  }
+
+  .room-host {
+    color: #ffeb3b;
+    font-weight: bold;
+  }
+
+  .join-btn {
+    width: 100%;
+    margin-top: 1rem;
+  }
+
+  .game-room-section {
+    display: none;
+  }
+
+  .moderator-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding: 1rem;
+    justify-content: center;
+  }
+
+  .moderator-avatar {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    border: 3px solid #fff;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+    flex-shrink: 0;
+  }
+
+  .speech-bubble {
+    background: linear-gradient(135deg, #fff, #f5f5f5);
+    color: #333;
+    padding: 1rem 1.5rem;
+    border-radius: 20px;
+    position: relative;
+    max-width: 500px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .speech-bubble::before {
+    content: '';
+    position: absolute;
+    left: -10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-right: 15px solid #fff;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-5px); }
+  }
+
+  .room-header-info {
+    background: rgba(0,0,0,0.5);
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+    border: 2px solid #8b4513;
+    text-align: center;
+    backdrop-filter: blur(10px);
+  }
+
+  .room-title {
+    font-size: 1.8rem;
+    color: #ffeb3b;
+    margin-bottom: 0.5rem;
+  }
+
+  .room-details {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .detail-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .detail-label {
+    font-size: 0.8rem;
+    opacity: 0.8;
+  }
+
+  .detail-value {
+    font-weight: bold;
+    color: #ffeb3b;
+  }
+
+  .game-phase-indicator {
+    background: rgba(0,0,0,0.6);
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+    border: 2px solid #8b4513;
+    text-align: center;
+    backdrop-filter: blur(10px);
+  }
+
+  .phase-title {
+    font-size: 2rem;
+    color: #ffeb3b;
+    margin-bottom: 0.5rem;
+  }
+
+  .players-in-room {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .player-in-room {
+    background: rgba(0,0,0,0.4);
+    padding: 1rem;
+    border-radius: 12px;
+    border: 3px solid #8b4513;
+    text-align: center;
+    position: relative;
+    transition: all 0.3s ease;
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(5px);
+  }
+
+  .player-card-img {
+    width: 90px;
+    height: 125px;
+    background: url('img/Backcard.png') center/cover no-repeat;
+    border-radius: 8px;
+    border: 2px solid #a78517;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.7);
+    margin-bottom: 0.5rem;
+    transition: all 0.6s ease;
+    position: relative;
+  }
+
+  .player-in-room.dead .player-card-img {
+    background-image: url('img/Backcard.png') !important;
+    filter: brightness(0.3) grayscale(100%);
+    transform: rotateY(180deg) rotate(-15deg);
+  }
+
+  .player-in-room.dead {
+    opacity: 0.6;
+  }
+
+  .player-in-room.dead::after {
+    content: "💀";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3rem;
+    z-index: 2;
+    animation: deathPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes deathPulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+    50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+  }
+
+  .player-in-room.host {
+    border-color: #ffeb3b;
+  }
+
+  .player-in-room.host::before {
+    content: "👑";
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: #ffeb3b;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    z-index: 3;
+  }
+
+  .player-in-room.selectable {
+    cursor: pointer;
+    border-color: #4caf50;
+  }
+
+  .player-in-room.selectable:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+  }
+
+  .player-in-room.selectable:hover .player-card-img {
+    transform: translateY(-5px);
+  }
+
+  .player-in-room.selected {
+    border-color: #ff9800;
+    background: rgba(255, 152, 0, 0.3);
+  }
+
+  .player-name {
+    font-weight: bold;
+    color: #f5f5dc;
+    font-size: 0.9rem;
+  }
+
+  .player-ready {
+    margin-top: 0.5rem;
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+
+  .ready {
+    background: #4caf50;
+    color: white;
+  }
+
+  .not-ready {
+    background: #f44336;
+    color: white;
+  }
+
+  .game-controls {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 2rem 0;
+  }
+
+  .role-assignment {
+    background: rgba(0,0,0,0.6);
+    border: 2px solid #8b4513;
+    border-radius: 12px;
+    padding: 2rem;
+    margin: 2rem 0;
+    text-align: center;
+    backdrop-filter: blur(10px);
+  }
+
+  .your-role {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: #ffeb3b;
+  }
+
+  .role-card-display {
+    width: 200px;
+    height: 280px;
+    margin: 0 auto 1rem;
+    border-radius: 15px;
+    border: 3px solid #ffeb3b;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+    perspective: 800px;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .role-card-display .card-inner {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  .role-card-display.flipped .card-inner {
+    transform: rotateY(180deg);
+  }
+
+  .role-card-display .card-face {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    border-radius: 12px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .role-card-display .card-back {
+    background-image: url('img/Backcard.png');
+  }
+
+  .role-card-display .card-front {
+    transform: rotateY(180deg);
+  }
+
+  .role-description {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #ccc;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .shake {
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+
+  @keyframes shake {
+    10%, 90% {
+      transform: translate3d(-1px, 0, 0);
+    }
+    
+    20%, 80% {
+      transform: translate3d(2px, 0, 0);
+    }
+
+    30%, 50%, 70% {
+      transform: translate3d(-4px, 0, 0);
+    }
+
+    40%, 60% {
+      transform: translate3d(4px, 0, 0);
+    }
+  }
+
+  .modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .modal.show {
+    display: flex;
+  }
+
+  .modal-content {
+    background: linear-gradient(135deg, #2c2c2c, #1a1a1a);
+    border: 2px solid #8b4513;
+    border-radius: 15px;
+    padding: 20px;
+    width: 90%;
+    max-width: 500px;
+    animation: modalAppear 0.3s ease-out;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+  }
+
+  @keyframes modalAppear {
+    from {
+      transform: translateY(-50px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .modal-header {
+    border-bottom: 2px solid #8b4513;
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+  }
+
+  .modal-header h2 {
+    margin: 0;
+    color: #ffeb3b;
+    font-size: 1.5rem;
+    text-align: center;
+  }
+
+  .modal-body {
+    color: #f5f5dc;
+    text-align: center;
+  }
+
+  .modal-body p {
+    margin: 15px 0;
+    font-size: 1.1rem;
+    line-height: 1.4;
+  }
+
+  .modal-footer {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+  }
+
+  .modal-footer button {
+    min-width: 120px;
+  }
+
+  .team-indicator {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: bold;
+    margin-top: 1rem;
+  }
+
+  .team-villager {
+    background: linear-gradient(135deg, #4caf50, #45a049);
+    color: white;
+  }
+
+  .team-werewolf {
+    background: linear-gradient(135deg, #f44336, #d32f2f);
+    color: white;
+  }
+
+  .team-neutral {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    color: white;
+  }
+
+  .action-area {
+    background: rgba(0,0,0,0.6);
+    border: 2px solid #8b4513;
+    border-radius: 12px;
+    padding: 2rem;
+    margin: 2rem 0;
+    text-align: center;
+    backdrop-filter: blur(10px);
+  }
+
+  .action-title {
+    font-size: 1.5rem;
+    color: #ffeb3b;
+    margin-bottom: 1rem;
+  }
+
+  .action-instruction {
+    font-size: 1rem;
+    color: #ccc;
+    margin-bottom: 1.5rem;
+  }
+
+  .game-log {
+    background: rgba(0,0,0,0.6);
+    border: 2px solid #8b4513;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 2rem 0;
+    max-height: 300px;
+    overflow-y: auto;
+    backdrop-filter: blur(10px);
+  }
+
+  .game-log-title {
+    font-size: 1.2rem;
+    color: #ffeb3b;
+    margin-bottom: 1rem;
+    position: sticky;
+    top: 0;
+    background: rgba(0,0,0,0.9);
+    padding: 0.5rem 0;
+  }
+
+  .log-entry {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    border-radius: 5px;
+    background: rgba(255,255,255,0.05);
+  }
+
+  .log-entry.important {
+    background: rgba(255, 152, 0, 0.2);
+    border-left: 3px solid #ff9800;
+  }
+
+  .message {
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    text-align: center;
+    animation: fadeIn 0.5s ease-in-out;
+    backdrop-filter: blur(5px);
+  }
+
+  .message-success {
+    background: rgba(76, 175, 80, 0.3);
+    border: 1px solid #4caf50;
+    color: #4caf50;
+  }
+
+  .message-error {
+    background: rgba(244, 67, 54, 0.3);
+    border: 1px solid #f44336;
+    color: #f44336;
+  }
+
+  .message-info {
+    background: rgba(33, 150, 243, 0.3);
+    border: 1px solid #2196f3;
+    color: #2196f3;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  footer {
+    text-align: center;
+    padding: 1rem;
+    color: #f5f5dc;
+    background: rgba(15, 10, 10, 0.85);
+    border-top: 2px solid #8b4513;
+  }
+
+  @media (max-width: 768px) {
+    .container {
+      padding: 1rem;
+    }
+    
+    header h1 {
+      font-size: 1.8rem;
+    }
+    
+    .form-row {
+      flex-direction: column;
+    }
+    
+    .rooms-list {
+      grid-template-columns: 1fr;
+    }
+    
+    .players-in-room {
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 1rem;
+    }
+
+    .player-card-img {
+      width: 70px;
+      height: 100px;
+    }
+    
+    .game-controls {
+      flex-direction: column;
+    }
+    
+    .room-details {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .moderator-avatar {
+      width: 50px;
+      height: 50px;
+      font-size: 1.5rem;
+    }
+
+    .speech-bubble {
+      max-width: 300px;
+      font-size: 0.85rem;
+    }
+
+    .timer-display {
+      font-size: 0.9rem;
+      padding: 0.6rem 1rem;
+    }
+  }
+</style>
+</head>
+<body class="day">
+  <div class="connection-status disconnected" id="connectionStatus">🔴 ไม่ได้เชื่อมต่อ</div>
+  
+  <header>
+    <div class="header-content">
+      <h1>🐺 MTP WEREWOLF ONLINE 🌙</h1>
+      <div class="timer-display hidden" id="timerDisplay">
+        <div class="timer-label">เฟสถัดไป</div>
+        <div class="timer-time" id="timerTime">--:--</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="lobby-section" id="lobbySection">
+      <div class="user-info">
+        <div class="nickname-input">
+          <input type="text" id="nicknameInput" placeholder="ใส่ชื่อเล่นของคุณ" maxlength="12">
+          <button class="btn btn-primary" onclick="setNickname()">ตั้งชื่อ</button>
+        </div>
+        <div id="currentUser" class="hidden" style="margin-top: 1rem;">
+          ผู้เล่น: <span id="userDisplay" style="color: #ffeb3b; font-weight: bold;"></span>
+        </div>
+      </div>
+
+      <div class="room-actions" id="roomActions" style="display: none;">
+        <button class="btn btn-primary" onclick="showCreateRoomForm()">🏠 สร้างห้อง</button>
+        <button class="btn btn-secondary" onclick="refreshRooms()">🔄 รีเฟรช</button>
+      </div>
+
+      <div class="create-room-form hidden" id="createRoomForm">
+        <h3 style="color: #ffeb3b; margin-bottom: 1rem;">สร้างห้องใหม่</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="roomName">ชื่อห้อง</label>
+            <input type="text" id="roomName" placeholder="ใส่ชื่อห้อง" maxlength="20">
+          </div>
+          <div class="form-group">
+            <label for="maxPlayers">จำนวนผู้เล่นสูงสุด</label>
+            <select id="maxPlayers">
+              <option value="5">5 คน</option>
+              <option value="6">6 คน</option>
+              <option value="7">7 คน</option>
+              <option value="8">8 คน</option>
+              <option value="9">9 คน</option>
+              <option value="10">10 คน</option>
+              <option value="11">11 คน</option>
+              <option value="12">12 คน</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="roomPassword">รหัสผ่าน (ไม่บังคับ)</label>
+          <input type="password" id="roomPassword" placeholder="ใส่รหัสผ่านหากต้องการ" maxlength="10">
+        </div>
+        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+          <button class="btn btn-primary" onclick="createRoom()">สร้างห้อง</button>
+          <button class="btn btn-secondary" onclick="hideCreateRoomForm()">ยกเลิก</button>
+        </div>
+      </div>
+
+      <div id="roomsList">
+        <h3 style="color: #ffeb3b; margin-bottom: 1rem;">รายการห้อง</h3>
+        <div class="rooms-list" id="roomsContainer"></div>
+      </div>
+    </div>
+
+    <div class="game-room-section" id="gameRoomSection">
+      <div class="moderator-section">
+        <div class="moderator-avatar">🎭</div>
+        <div class="speech-bubble" id="moderatorMessage">
+          ยินดีต้อนรับสู่เกมหมาป่า!
+        </div>
+      </div>
+
+      <div class="room-header-info">
+        <div class="room-title" id="currentRoomName">ห้องเกม</div>
+        <div class="room-details">
+          <div class="detail-item">
+            <div class="detail-label">ผู้เล่น</div>
+            <div class="detail-value" id="playerCount">0/0</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">สถานะ</div>
+            <div class="detail-value" id="gameStatus">รอผู้เล่น</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">เจ้าของห้อง</div>
+            <div class="detail-value" id="roomOwner">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="game-phase-indicator hidden" id="gamePhaseIndicator">
+        <div class="phase-title" id="phaseTitle">รอเริ่มเกม</div>
+      </div>
+
+      <div class="players-in-room" id="playersInRoom"></div>
+
+      <div class="game-controls">
+        <button class="btn btn-primary" id="readyBtn" onclick="toggleReady()">พร้อม</button>
+        <button class="btn btn-primary hidden" id="startGameBtn" onclick="startGame()">เริ่มเกม</button>
+        <button class="btn btn-danger" onclick="leaveRoom()">ออกจากห้อง</button>
+      </div>
+
+      <div class="role-assignment hidden" id="roleAssignment">
+        <div class="your-role">บทบาทของคุณ</div>
+        <div class="role-card-display" id="roleCardDisplay" onclick="flipRoleCard()">
+          <div class="card-inner">
+            <div class="card-face card-back"></div>
+            <div class="card-face card-front" id="roleCardFront"></div>
+          </div>
+        </div>
+        <div class="role-description" id="roleDescription"></div>
+        <div class="team-indicator" id="teamIndicator"></div>
+        <div id="werewolfTeam" class="hidden" style="margin-top: 1rem;"></div>
+      </div>
+
+      <div class="action-area hidden" id="actionArea">
+        <div class="action-title" id="actionTitle">เลือกการกระทำ</div>
+        <div class="action-instruction" id="actionInstruction">กรุณาเลือกผู้เล่น</div>
+        <button class="btn btn-primary" id="confirmActionBtn" onclick="confirmAction()" disabled>ยืนยันการกระทำ</button>
+      </div>
+
+      <div class="game-log hidden" id="gameLog">
+        <div class="game-log-title">📜 บันทึกเหตุการณ์</div>
+        <div id="gameLogContent"></div>
+      </div>
+
+      <div id="gameMessages"></div>
+    </div>
+
+    <div id="messages"></div>
+  </div>
+
+  <!-- Modal สำหรับยืนยันการโหวต -->
+  <div class="modal" id="voteConfirmModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>⚠️ ยืนยันการโหวต</h2>
+      </div>
+      <div class="modal-body">
+        <p>คุณต้องการโหวตให้ <span class="vote-target-name" style="color: #ffeb3b; font-weight: bold;"></span> ใช่หรือไม่?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancelVoteBtn">ยกเลิก</button>
+        <button class="btn btn-primary" id="confirmVoteBtn">ยืนยัน</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal แสดงผลการโหวตและการตัดสิน -->
+  <div class="modal" id="judgmentModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>🔥 ผู้เล่นถูกโหวต</h2>
+      </div>
+      <div class="modal-body">
+        <h3 class="voted-player-name" style="color: #ffeb3b; margin-bottom: 1rem;"></h3>
+        <img src="img/Backcard.png" alt="Player Card" id="votedPlayerCard" class="player-card-img" style="width: 150px; height: 210px; margin: 0 auto 1rem; display: block;">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="forgiveBtn">🕊️ ให้อภัย</button>
+        <button class="btn btn-danger" id="burnBtn">🔥 เผา</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>DEV l <strong>KRIT.KISS MTP</strong></p>
+  </footer>
+
+<script>
+const SERVER_URL = 'http://localhost:3000';
+
+const roleCardImages = {
+  'Villager': 'img/Villager2.png',
+  'Seer': 'img/Seer.png',
+  'Bodyguard': 'img/Bodyguard.png',
+  'Werewolf': 'img/Wolf.png',
+  'Witch': 'img/Witch.png',
+  'Wizard': 'img/Sorcerer.png',
+  'Hunter': 'img/Hunter.png',
+  'Prostitute': 'img/Bitch.png',
+  'Wolf Cub': 'img/Babywolf.png',
+  'Mermaid': 'img/Silent.png',
+  'Minion': 'img/Labour.png',
+  'Village Drunk': 'img/Drunker.png'
+};
+
+let socket;
+let gameState = {
+  currentUser: null,
+  currentRoom: null,
+  isReady: false,
+  userRole: null,
+  selectedPlayer: null,
+  gamePhase: 'lobby',
+  inRoom: false,
+  hasVoted: false,
+  isConnected: false
+};
+let phaseTimer = null;
+
+const moderatorMessages = {
+  lobby: [
+    "ยินดีต้อนรับสู่เกมหมาป่า! รอเจ้าของห้องเริ่มเกม",
+    "เตรียมพร้อมสำหรับการผจญภัย... เกมจะเริ่มเร็วๆ นี้",
+    "ทุกคนพร้อมหรือยัง? รอเริ่มเกมอยู่นะ"
+  ],
+  day: [
+    "🌅 สวัสดีตอนเช้า! วันใหม่เริ่มต้นแล้ว ทุกคนตื่นขึ้นมาพูดคุยกันเถอะ",
+    "☀️ รุ่งเช้าวันใหม่! มาดูกันว่าคืนที่ผ่านมามีเหตุการณ์อะไรเกิดขึ้นบ้าง",
+    "🌄 แสงอาทิตย์ขึ้นแล้ว! ได้เวลาหาหมาป่ากัน"
+  ],
+  night: [
+    "🌙 ค่ำคืนมาถึงแล้ว ทุกคนกรุณานอนหลับ... หมาป่าตื่นขึ้นมาแล้ว",
+    "🌃 เวลานอนแล้ว! ชาวบ้านต้องหลับให้สนิท",
+    "⭐ ถึงเวลาของหมาป่าแล้ว... เลือกเหยื่อของคืนนี้ได้เลย"
+  ],
+  gameStart: [
+    "🎮 เกมเริ่มต้นแล้ว! ขอให้ทุกคนโชคดี",
+    "🎲 มาเริ่มเกมหมาป่ากันเถอะ! ใครจะรอด ใครจะตาย?",
+    "🎯 เกมเริ่มแล้ว! อย่าลืมว่าความไว้วางใจคือทุกสิ่ง"
+  ]
+};
+
+function getRandomMessage(category) {
+  const messages = moderatorMessages[category] || moderatorMessages.lobby;
+  return messages[Math.floor(Math.random() * messages.length)];
+}
+
+function updateModeratorMessage(category) {
+  const message = getRandomMessage(category);
+  const moderatorElement = document.getElementById('moderatorMessage');
+  if (moderatorElement) {
+    moderatorElement.textContent = message;
+  }
+}
+
+function initSocket() {
+  if (socket && socket.connected) {
+    socket.disconnect();
+  }
+  
+  socket = io(SERVER_URL);
+  
+  socket.on('connect', () => {
+    console.log('Connected to server');
+    gameState.isConnected = true;
+    updateConnectionStatus(true);
+  });
+  
+  socket.on('disconnect', () => {
+    console.log('Disconnected from server');
+    gameState.isConnected = false;
+    updateConnectionStatus(false);
+    showMessage('ตัดการเชื่อมต่อจากเซิร์ฟเวอร์', 'error');
+  });
+
+  socket.on('connect_error', () => {
+    gameState.isConnected = false;
+    updateConnectionStatus(false);
+    showMessage('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+  });
+  
+  socket.on('roomUpdate', (room) => {
+    if (gameState.inRoom && room) {
+      gameState.currentRoom = room;
+      updateGameRoomDisplay(room);
+    }
+  });
+  
+  socket.on('roomsUpdate', () => {
+    if (!gameState.inRoom) {
+      refreshRooms();
+    }
+  });
+  
+  socket.on('playerJoined', (data) => {
+    if (data && data.nickname) {
+      addGameLog(`✅ ${data.nickname} เข้าร่วมห้อง`);
+    }
+  });
+  
+  socket.on('playerLeft', (data) => {
+    if (data && data.nickname) {
+      addGameLog(`❌ ${data.nickname} ออกจากห้อง`);
+    }
+  });
+  
+  socket.on('roomClosed', () => {
+    showMessage('เจ้าของห้องปิดห้อง', 'info');
+    resetGameState();
+    switchToLobby();
+  });
+  
+  socket.on('roleAssigned', (role) => {
+    if (role) {
+      gameState.userRole = role;
+      showRoleAssignment(role);
+      setTimeout(() => {
+        flipRoleCard();
+      }, 1000);
+    }
+  });
+
+  socket.on('gameStarted', (data) => {
+    if (data && data.room) {
+      gameState.gamePhase = 'game';
+      document.getElementById('gameLog').classList.remove('hidden');
+      document.getElementById('timerDisplay').classList.remove('hidden');
+      addGameLog('🎮 เกมเริ่มต้น!', true);
+      updateGameRoomDisplay(data.room);
+      updateModeratorMessage('gameStart');
+      document.body.classList.add('day');
+      document.body.classList.remove('night');
+      
+      if (phaseTimer) clearInterval(phaseTimer);
+      if (data.duration) {
+        startPhaseTimer(data.duration);
+      }
+    }
+  });
+
+  socket.on('phaseChange', (data) => {
+    if (data && data.phase) {
+      gameState.gamePhase = data.phase;
+      document.getElementById('timerDisplay').classList.remove('hidden');
+      
+      if (phaseTimer) clearInterval(phaseTimer);
+      if (data.duration) {
+        startPhaseTimer(data.duration);
+      }
+      
+      if (data.phase === 'night') {
+        startNightPhase(data.dayNumber || 1);
+        document.body.classList.add('night');
+        document.body.classList.remove('day');
+        updateModeratorMessage('night');
+      } else if (data.phase === 'day') {
+        startDayPhase(data.dayNumber || 1);
+        document.body.classList.add('day');
+        document.body.classList.remove('night');
+        updateModeratorMessage('day');
+      } else if (data.phase === 'voting') {
+        startVotingPhase();
+      }
+    }
+  });
+  
+  socket.on('investigateResult', (data) => {
+    if (data && data.target && gameState.currentRoom) {
+      const player = gameState.currentRoom.players.find(p => p.id === data.target);
+      if (player) {
+        const result = data.isWerewolf ? 'หมาป่า 🐺' : 'คนดี ✅';
+        showMessage(`🔮 ผลการตรวจสอบ: ${player.nickname} เป็น${result}`, data.isWerewolf ? 'error' : 'success');
+        addGameLog(`🔮 คุณตรวจสอบ ${player.nickname}: ${result}`);
+      }
+    }
+  });
+  
+  socket.on('playerDied', (data) => {
+    if (data && data.nickname) {
+      addGameLog(`💀 ${data.nickname} ถูกหมาป่าโจมตีในคืนนี้!`, true);
+      updateModeratorMessage('day');
+      setTimeout(() => {
+        const moderatorElement = document.getElementById('moderatorMessage');
+        if (moderatorElement) {
+          moderatorElement.textContent = `😱 ข่าวร้าย! ${data.nickname} ไม่รอดจากคืนที่ผ่านมา...`;
+        }
+      }, 1000);
+    }
+  });
+  
+  socket.on('playerProtected', () => {
+    addGameLog(`🛡️ บอดี้การ์ดช่วยใครสักคนไว้ได้!`, true);
+  });
+  
+  socket.on('playerVotedOut', (data) => {
+    if (!data || !data.nickname) {
+      console.error('Invalid playerVotedOut data:', data);
+      return;
+    }
+
+    const modal = document.getElementById('judgmentModal');
+    const playerNameEl = modal.querySelector('.voted-player-name');
+    const playerCard = document.getElementById('votedPlayerCard');
+    const forgiveBtn = document.getElementById('forgiveBtn');
+    const burnBtn = document.getElementById('burnBtn');
+
+    if (!modal || !playerNameEl || !playerCard || !forgiveBtn || !burnBtn) {
+      console.error('Required DOM elements not found');
+      return;
+    }
+
+    function cleanup() {
+      forgiveBtn.removeEventListener('click', handleForgive);
+      burnBtn.removeEventListener('click', handleBurn);
+      modal.removeEventListener('click', handleOutsideClick);
+      playerCard.classList.remove('card-flip');
+    }
+
+    function handleForgive() {
+      socket.emit('judgmentVote', { target: data.id, vote: 'forgive' });
+      addGameLog(`🕊️ ชาวบ้านตัดสินใจให้อภัย ${data.nickname}`, true);
+      showMessage(`${data.nickname} ได้รับการให้อภัย`, 'info');
+      modal.classList.remove('show');
+      cleanup();
+    }
+
+    function handleBurn() {
+      socket.emit('judgmentVote', { target: data.id, vote: 'burn' });
+      playerCard.classList.add('card-flip');
+      setTimeout(() => {
+        const roleImage = (data.role && roleCardImages[data.role.nameEn]) ? roleCardImages[data.role.nameEn] : 'img/Backcard.png';
+        playerCard.src = roleImage;
+        addGameLog(`⚖️ ${data.nickname} ถูกโหวตออกด้วย ${data.votes || 0} คะแนน`, true);
+        if (data.role) {
+          addGameLog(`💀 ${data.nickname} มีบทบาทเป็น ${data.role.name} ${data.role.icon || ''}`);
+        }
+      }, 500);
+      setTimeout(() => {
+        modal.classList.remove('show');
+        cleanup();
+      }, 3000);
+    }
+
+    function handleOutsideClick(e) {
+      if (e.target === modal) {
+        modal.classList.remove('show');
+        cleanup();
+      }
+    }
+
+    playerNameEl.textContent = `${data.nickname} (${data.votes || 0} คะแนน)`;
+    playerCard.src = 'img/Backcard.png';
+    playerCard.classList.remove('card-flip');
+    modal.classList.add('show');
+
+    forgiveBtn.addEventListener('click', handleForgive);
+    burnBtn.addEventListener('click', handleBurn);
+    modal.addEventListener('click', handleOutsideClick);
+  });
+
+  socket.on('voteVoid', (data) => {
+    if (data && data.message) {
+      showMessage(data.message, 'info');
+      addGameLog('⚖️ ' + data.message, true);
+    }
+  });
+
+  socket.on('voteUpdate', (data) => {
+    if (data) {
+      console.log('Vote update:', data.votes, data.totalVoted, data.totalPlayers);
+    }
+  });
+  
+  socket.on('gameEnded', (data) => {
+    if (data && data.message) {
+      gameState.gamePhase = 'ended';
+      document.getElementById('gamePhaseIndicator').classList.remove('hidden');
+      document.getElementById('phaseTitle').textContent = data.message;
+      addGameLog(data.message, true);
+      showMessage(data.message, data.winner === 'villager' ? 'success' : 'error');
+      document.getElementById('actionArea').classList.add('hidden');
+      
+      const moderatorElement = document.getElementById('moderatorMessage');
+      if (moderatorElement) {
+        moderatorElement.textContent = data.message;
+      }
+      
+      if (phaseTimer) {
+        clearInterval(phaseTimer);
+        phaseTimer = null;
+      }
+    }
+  });
+
+  socket.on('error', (error) => {
+    console.error('Socket error:', error);
+    showMessage('เกิดข้อผิดพลาด: ' + (error.message || 'Unknown error'), 'error');
+  });
+}
+
+function resetGameState() {
+  gameState.inRoom = false;
+  gameState.currentRoom = null;
+  gameState.isReady = false;
+  gameState.userRole = null;
+  gameState.gamePhase = 'lobby';
+  gameState.selectedPlayer = null;
+  gameState.hasVoted = false;
+  
+  if (phaseTimer) {
+    clearInterval(phaseTimer);
+    phaseTimer = null;
+  }
+  
+  document.body.classList.remove('night');
+  document.body.classList.add('day');
+}
+
+function updateConnectionStatus(connected) {
+  const status = document.getElementById('connectionStatus');
+  if (status) {
+    if (connected) {
+      status.textContent = '🟢 เชื่อมต่อแล้ว';
+      status.className = 'connection-status connected';
+    } else {
+      status.textContent = '🔴 ไม่ได้เชื่อมต่อ';
+      status.className = 'connection-status disconnected';
+    }
+  }
+}
+
+function showMessage(text, type = 'info') {
+  if (!text) return;
+  
+  const messagesDiv = document.getElementById('messages');
+  if (!messagesDiv) return;
+  
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message message-${type}`;
+  messageDiv.textContent = text;
+  messagesDiv.appendChild(messageDiv);
+  
+  setTimeout(() => {
+    if (messageDiv.parentNode) {
+      messageDiv.parentNode.removeChild(messageDiv);
+    }
+  }, 5000);
+}
+
+function addGameLog(text, important = false) {
+  if (!text) return;
+  
+  const logContent = document.getElementById('gameLogContent');
+  if (!logContent) return;
+  
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${important ? 'important' : ''}`;
+  const time = new Date().toLocaleTimeString('th-TH');
+  entry.innerHTML = `<span style="opacity: 0.7;">[${time}]</span> ${text}`;
+  logContent.appendChild(entry);
+  logContent.scrollTop = logContent.scrollHeight;
+}
+
+function setNickname() {
+  const nicknameInput = document.getElementById('nicknameInput');
+  if (!nicknameInput) return;
+  
+  const nickname = nicknameInput.value.trim();
+  
+  if (!nickname) {
+    showMessage('กรุณาใส่ชื่อเล่น', 'error');
+    return;
+  }
+  
+  if (nickname.length < 2 || nickname.length > 12) {
+    showMessage('ชื่อเล่นต้องมี 2-12 ตัวอักษร', 'error');
+    return;
+  }
+
+  if (!gameState.isConnected) {
+    showMessage('ไม่ได้เชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+    return;
+  }
+  
+  socket.emit('setNickname', nickname, (response) => {
+    if (response && response.success) {
+      gameState.currentUser = nickname;
+      const userDisplay = document.getElementById('userDisplay');
+      const currentUser = document.getElementById('currentUser');
+      const roomActions = document.getElementById('roomActions');
+      
+      if (userDisplay) userDisplay.textContent = nickname;
+      if (currentUser) currentUser.classList.remove('hidden');
+      if (nicknameInput) nicknameInput.style.display = 'none';
+      
+      const nicknameBtn = document.querySelector('.nickname-input button');
+      if (nicknameBtn) nicknameBtn.style.display = 'none';
+      if (roomActions) roomActions.style.display = 'flex';
+      
+      showMessage(`ยินดีต้อนรับ ${nickname}!`, 'success');
+      refreshRooms();
+    } else {
+      showMessage(response?.error || 'ไม่สามารถตั้งชื่อได้', 'error');
+    }
+  });
+}
+
+function showCreateRoomForm() {
+  const form = document.getElementById('createRoomForm');
+  if (form) {
+    form.classList.remove('hidden');
+  }
+}
+
+function hideCreateRoomForm() {
+  const form = document.getElementById('createRoomForm');
+  const roomName = document.getElementById('roomName');
+  const roomPassword = document.getElementById('roomPassword');
+  const maxPlayers = document.getElementById('maxPlayers');
+  
+  if (form) form.classList.add('hidden');
+  if (roomName) roomName.value = '';
+  if (roomPassword) roomPassword.value = '';
+  if (maxPlayers) maxPlayers.value = '8';
+}
+
+function createRoom() {
+  const roomName = document.getElementById('roomName');
+  const maxPlayers = document.getElementById('maxPlayers');
+  const password = document.getElementById('roomPassword');
+  
+  if (!roomName || !maxPlayers) return;
+  
+  const roomNameValue = roomName.value.trim();
+  const maxPlayersValue = parseInt(maxPlayers.value);
+  const passwordValue = password ? password.value.trim() : '';
+  
+  if (!roomNameValue) {
+    showMessage('กรุณาใส่ชื่อห้อง', 'error');
+    return;
+  }
+
+  if (!gameState.isConnected) {
+    showMessage('ไม่ได้เชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+    return;
+  }
+  
+  socket.emit('createRoom', { 
+    name: roomNameValue, 
+    maxPlayers: maxPlayersValue, 
+    password: passwordValue 
+  }, (response) => {
+    if (response && response.success && response.room) {
+      gameState.currentRoom = response.room;
+      gameState.inRoom = true;
+      hideCreateRoomForm();
+      switchToGameRoom();
+      updateGameRoomDisplay(response.room);
+      showMessage(`สร้างห้อง "${roomNameValue}" สำเร็จ!`, 'success');
+      updateModeratorMessage('lobby');
+    } else {
+      showMessage(response?.error || 'ไม่สามารถสร้างห้องได้', 'error');
+    }
+  });
+}
+
+function refreshRooms() {
+  if (!gameState.isConnected) {
+    showMessage('ไม่ได้เชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+    return;
+  }
+  
+  socket.emit('getRooms', (rooms) => {
+    const container = document.getElementById('roomsContainer');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!rooms || rooms.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; color: #ccc; grid-column: 1 / -1;">
+          <p>ยังไม่มีห้องเกม</p>
+          <p>สร้างห้องใหม่เพื่อเริ่มเล่น!</p>
+        </div>
+      `;
+      return;
+    }
+    
+    rooms.forEach(room => {
+      if (room) {
+        const card = createRoomCard(room);
+        container.appendChild(card);
+      }
+    });
+  });
+}
+
+function createRoomCard(room) {
+  if (!room) return document.createElement('div');
+  
+  const card = document.createElement('div');
+  card.className = 'room-card';
+  
+  const isFull = (room.playerCount || 0) >= (room.maxPlayers || 0);
+  
+  let statusClass, statusText;
+  if (room.gameStarted) {
+    statusClass = 'status-playing';
+    statusText = 'กำลังเล่น';
+  } else if (isFull) {
+    statusClass = 'status-full';
+    statusText = 'เต็ม';
+  } else {
+    statusClass = 'status-waiting';
+    statusText = 'รอผู้เล่น';
+  }
+  
+  card.innerHTML = `
+    <div class="room-header">
+      <div class="room-name">${room.name || 'Unknown Room'} ${room.hasPassword ? '🔒' : ''}</div>
+      <div class="room-status ${statusClass}">${statusText}</div>
+    </div>
+    <div class="room-info">
+      <div class="players-info">👥 ${room.playerCount || 0}/${room.maxPlayers || 0}</div>
+      <div class="room-host">🎮 ${room.hostNickname || 'Unknown'}</div>
+    </div>
+    <button class="btn btn-primary join-btn" onclick="joinRoom('${room.id}')" 
+            ${isFull || room.gameStarted ? 'disabled' : ''}>
+      ${isFull ? 'ห้องเต็ม' : (room.gameStarted ? 'กำลังเล่น' : 'เข้าร่วม')}
+    </button>
+  `;
+  
+  return card;
+}
+
+function joinRoom(roomId) {
+  if (!roomId || !gameState.isConnected) {
+    showMessage('ไม่สามารถเข้าห้องได้', 'error');
+    return;
+  }
+  
+  socket.emit('getRooms', (rooms) => {
+    if (!rooms) {
+      showMessage('ไม่สามารถโหลดห้องได้', 'error');
+      return;
+    }
+    
+    const room = rooms.find(r => r && r.id === roomId);
+    let password = null;
+    
+    if (room && room.hasPassword) {
+      password = prompt('ใส่รหัสผ่านห้อง:');
+      if (!password) return;
+    }
+    
+    socket.emit('joinRoom', { roomId, password }, (response) => {
+      if (response && response.success && response.room) {
+        gameState.currentRoom = response.room;
+        gameState.inRoom = true;
+        switchToGameRoom();
+        updateGameRoomDisplay(response.room);
+        showMessage(`เข้าร่วมห้อง "${response.room.name}" แล้ว!`, 'success');
+        updateModeratorMessage('lobby');
+      } else {
+        showMessage(response?.error || 'ไม่สามารถเข้าห้องได้', 'error');
+      }
+    });
+  });
+}
+
+function leaveRoom() {
+  if (!gameState.isConnected) {
+    showMessage('ไม่ได้เชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+    return;
+  }
+  
+  socket.emit('leaveRoom', (response) => {
+    if (response && response.success) {
+      resetGameState();
+      switchToLobby();
+      showMessage('ออกจากห้องแล้ว', 'info');
+    } else {
+      showMessage('ไม่สามารถออกจากห้องได้', 'error');
+    }
+  });
+}
+
+function switchToGameRoom() {
+  const lobbySection = document.getElementById('lobbySection');
+  const gameRoomSection = document.getElementById('gameRoomSection');
+  
+  if (lobbySection) lobbySection.style.display = 'none';
+  if (gameRoomSection) gameRoomSection.style.display = 'block';
+}
+
+function switchToLobby() {
+  const lobbySection = document.getElementById('lobbySection');
+  const gameRoomSection = document.getElementById('gameRoomSection');
+  const roleAssignment = document.getElementById('roleAssignment');
+  const gamePhaseIndicator = document.getElementById('gamePhaseIndicator');
+  const actionArea = document.getElementById('actionArea');
+  const gameLog = document.getElementById('gameLog');
+  const timerDisplay = document.getElementById('timerDisplay');
+  
+  if (gameRoomSection) gameRoomSection.style.display = 'none';
+  if (lobbySection) lobbySection.style.display = 'block';
+  if (roleAssignment) roleAssignment.classList.add('hidden');
+  if (gamePhaseIndicator) gamePhaseIndicator.classList.add('hidden');
+  if (actionArea) actionArea.classList.add('hidden');
+  if (gameLog) gameLog.classList.add('hidden');
+  if (timerDisplay) timerDisplay.classList.add('hidden');
+  
+  refreshRooms();
+}
+
+function updateGameRoomDisplay(room) {
+  if (!room) return;
+  
+  gameState.currentRoom = room;
+  
+  const currentRoomName = document.getElementById('currentRoomName');
+  const playerCount = document.getElementById('playerCount');
+  const gameStatus = document.getElementById('gameStatus');
+  const roomOwner = document.getElementById('roomOwner');
+  
+  if (currentRoomName) currentRoomName.textContent = room.name || 'ห้องเกม';
+  if (playerCount) playerCount.textContent = `${room.playerCount || 0}/${room.maxPlayers || 0}`;
+  if (gameStatus) gameStatus.textContent = room.gameStarted ? 'กำลังเล่น' : 'รอผู้เล่น';
+  if (roomOwner) roomOwner.textContent = room.hostNickname || '-';
+  
+  const playersContainer = document.getElementById('playersInRoom');
+  if (!playersContainer || !room.players) return;
+  
+  playersContainer.innerHTML = '';
+  
+  room.players.forEach((player, index) => {
+    if (!player) return;
+    
+    const playerDiv = document.createElement('div');
+    const isCurrentUser = player.nickname === gameState.currentUser;
+    // เฉพาะ voting phase เท่านั้นที่โหวตได้
+    const canVote = gameState.gamePhase === 'voting' && !isCurrentUser && player.isAlive && !gameState.hasVoted;
+    // เลือกเป้าหมายกลางคืน (night action)
+    const canSelect = (gameState.gamePhase === 'night' && !isCurrentUser && player.isAlive && gameState.userRole) || canVote;
+
+    playerDiv.className = `player-in-room ${player.isHost ? 'host' : ''} ${!player.isAlive ? 'dead' : ''} ${canSelect ? 'selectable' : ''}`;
+    playerDiv.setAttribute('data-player-id', player.id); // Add player ID for voting animations
+
+    if (canSelect) {
+      playerDiv.onclick = () => {
+        if (gameState.gamePhase === 'voting' && canVote) {
+          votePlayer(player.id);
+        } else if (gameState.gamePhase === 'night') {
+          selectPlayer(player.id);
+        }
+      };
+    }
+    
+    // Add visual indicator if player has been voted by current user
+    if (gameState.hasVoted && player.id === gameState.lastVotedPlayer) {
+      playerDiv.classList.add('voted-by-me');
+    }
+
+    const cardImg = document.createElement('div');
+    cardImg.className = 'player-card-img';
+    
+    if (player.role && room.gameStarted) {
+      if (isCurrentUser && player.isAlive) {
+        cardImg.style.backgroundImage = `url('img/Backcard.png')`;
+      }
+      else if (gameState.userRole && gameState.userRole.team === 'werewolf' && 
+               player.role.team === 'werewolf' && player.isAlive) {
+        const roleImage = roleCardImages[player.role.nameEn] || 'img/Backcard.png';
+        cardImg.style.backgroundImage = `url('${roleImage}')`;
+      }
+      else if (!player.isAlive) {
+        const roleImage = roleCardImages[player.role.nameEn] || 'img/Backcard.png';
+        cardImg.style.backgroundImage = `url('${roleImage}')`;
+      }
+      else {
+        cardImg.style.backgroundImage = `url('img/Backcard.png')`;
+      }
+    }
+    
+    playerDiv.innerHTML = `
+      <div class="player-name">${player.nickname || 'Unknown'}</div>
+      ${!room.gameStarted ? `<div class="player-ready ${player.isReady ? 'ready' : 'not-ready'}">
+        ${player.isReady ? 'พร้อม' : 'ยังไม่พร้อม'}
+      </div>` : ''}
+    `;
+    
+    playerDiv.insertBefore(cardImg, playerDiv.firstChild);
+    playersContainer.appendChild(playerDiv);
+  });
+  
+  const readyBtn = document.getElementById('readyBtn');
+  const startBtn = document.getElementById('startGameBtn');
+  
+  if (room.gameStarted) {
+    if (readyBtn) readyBtn.classList.add('hidden');
+    if (startBtn) startBtn.classList.add('hidden');
+  } else {
+    const isHost = room.hostNickname === gameState.currentUser;
+    if (readyBtn) readyBtn.classList.toggle('hidden', isHost);
+    
+    if (!isHost) {
+      const currentPlayer = room.players.find(p => p && p.nickname === gameState.currentUser);
+      if (currentPlayer && readyBtn) {
+        gameState.isReady = currentPlayer.isReady;
+        readyBtn.textContent = gameState.isReady ? 'ยกเลิกพร้อม' : 'พร้อม';
+        readyBtn.className = `btn ${gameState.isReady ? 'btn-secondary' : 'btn-primary'}`;
+      }
+    }
+    
+    const allReady = room.players.every(p => p && p.isReady);
+    const enoughPlayers = (room.playerCount || 0) >= 5;
+    if (startBtn) {
+      startBtn.classList.toggle('hidden', !isHost || !allReady || !enoughPlayers);
+    }
+  }
+}
+
+function toggleReady() {
+  if (!gameState.isConnected) {
+    showMessage('ไม่ได้เชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+    return;
+  }
+  
+  socket.emit('toggleReady', (response) => {
+    if (response && response.success) {
+      gameState.isReady = response.isReady;
+      showMessage(gameState.isReady ? 'คุณพร้อมแล้ว!' : 'ยกเลิกสถานะพร้อม', 'success');
+    } else {
+      showMessage(response?.error || 'ไม่สามารถเปลี่ยนสถานะได้', 'error');
+    }
+  });
+}
+
+function startGame() {
+  if (!gameState.isConnected) {
+    showMessage('ไม่ได้เชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+    return;
+  }
+  
+  socket.emit('startGame', (response) => {
+    if (response && !response.success) {
+      showMessage(response.error || 'ไม่สามารถเริ่มเกมได้', 'error');
+    }
+  });
+}
+
+function flipRoleCard() {
+  const roleCard = document.getElementById('roleCardDisplay');
+  if (!roleCard) return;
+  
+  roleCard.classList.toggle('flipped');
+  
+  setTimeout(() => {
+    const moderatorElement = document.getElementById('moderatorMessage');
+    if (moderatorElement) {
+      if (roleCard.classList.contains('flipped')) {
+        moderatorElement.textContent = 'อย่าให้ใครเห็นบทบาทของคุณนะ!';
+      } else {
+        moderatorElement.textContent = 'การ์ดถูกปิดแล้ว ความลับยังปลอดภัย';
+      }
+    }
+  }, 500);
+}
+
+function showRoleAssignment(role) {
+  if (!role) return;
+  
+  const roleAssignment = document.getElementById('roleAssignment');
+  const roleCardFront = document.getElementById('roleCardFront');
+  const roleDescription = document.getElementById('roleDescription');
+  const teamIndicator = document.getElementById('teamIndicator');
+  
+  if (!roleAssignment || !roleCardFront || !roleDescription || !teamIndicator) return;
+  
+  const roleImage = roleCardImages[role.nameEn] || 'img/Backcard.png';
+  roleCardFront.style.backgroundImage = `url('${roleImage}')`;
+  
+  roleDescription.textContent = `${role.name} - ` + getRoleDescription(role);
+  
+  teamIndicator.textContent = getTeamName(role.team);
+  teamIndicator.className = `team-indicator team-${role.team}`;
+  
+  if (role.werewolves && role.werewolves.length > 0) {
+    const werewolfTeam = document.getElementById('werewolfTeam');
+    if (werewolfTeam) {
+      werewolfTeam.classList.remove('hidden');
+      werewolfTeam.innerHTML = `<div class="message message-info">🐺 เพื่อนร่วมทีม: ${role.werewolves.map(w => w.nickname).join(', ')}</div>`;
+    }
+  }
+  
+  roleAssignment.classList.remove('hidden');
+}
+
+function getRoleDescription(role) {
+  if (!role) return '';
+  
+  const descriptions = {
+    'Villager': 'ไม่มีความสามารถพิเศษ ช่วยกันหาหมาป่า',
+    'Seer': 'ตรวจสอบผู้เล่น 1 คนในแต่ละคืน',
+    'Bodyguard': 'ปกป้องผู้เล่น 1 คนในแต่ละคืน',
+    'Witch': 'มียาชุบชีวิต 1 ครั้ง และยาพิษ 1 ครั้ง',
+    'Wizard': 'ปิดผนึกความสามารถของผู้เล่น 1 คน',
+    'Hunter': 'เมื่อตาย สามารถเลือกคนไปด้วย 1 คน',
+    'Prostitute': 'บล็อกและปกป้องผู้เล่น 1 คน',
+    'Werewolf': 'ฆ่าผู้เล่นฝ่ายดี 1 คนในแต่ละคืน',
+    'Wolf Cub': 'หากถูกโหวตตาย หมาป่าฆ่าได้ 2 คน',
+    'Mermaid': 'สาปผู้เล่น 1 คนให้ห้ามพูดในวันถัดไป',
+    'Minion': 'รู้ว่าหมาป่าคือใคร แต่หมาป่าไม่รู้',
+    'Village Drunk': 'ชนะเมื่อถูกโหวตออก'
+  };
+  return descriptions[role.nameEn] || role.name;
+}
+
+function getTeamName(team) {
+  const teams = {
+    villager: 'ฝ่ายชาวบ้าน',
+    werewolf: 'ฝ่ายหมาป่า',
+    neutral: 'ฝ่ายกลาง'
+  };
+  return teams[team] || team;
+}
+
+function startNightPhase(dayNumber) {
+  const gamePhaseIndicator = document.getElementById('gamePhaseIndicator');
+  const phaseTitle = document.getElementById('phaseTitle');
+  
+  if (gamePhaseIndicator) gamePhaseIndicator.classList.remove('hidden');
+  if (phaseTitle) phaseTitle.textContent = `🌙 คืนที่ ${dayNumber || 1}`;
+  
+  addGameLog(`🌙 ถึงเวลากลางคืน... ทุกคนหลับตาลง`, true);
+  
+  if (gameState.userRole && hasNightAction(gameState.userRole)) {
+    showNightAction(gameState.userRole);
+  } else {
+    const actionArea = document.getElementById('actionArea');
+    if (actionArea) actionArea.classList.add('hidden');
+    showMessage('คุณนอนหลับสบาย... รอให้ถึงเช้า', 'info');
+  }
+  
+  updateGameRoomDisplay(gameState.currentRoom);
+}
+
+function hasNightAction(role) {
+  return role && role.abilities && role.abilities.some(a => 
+    ['investigate', 'protect', 'kill', 'heal', 'poison', 'seal', 'block_and_protect', 'silence'].includes(a)
+  );
+}
+
+function showNightAction(role) {
+  if (!role || !role.abilities) return;
+  
+  const actionArea = document.getElementById('actionArea');
+  const actionTitle = document.getElementById('actionTitle');
+  const actionInstruction = document.getElementById('actionInstruction');
+  
+  if (!actionArea || !actionTitle || !actionInstruction) return;
+  
+  actionArea.classList.remove('hidden');
+  
+  if (role.abilities.includes('kill')) {
+    actionTitle.textContent = '🐺 เลือกเหยื่อ';
+    actionInstruction.textContent = 'เลือกผู้เล่นที่คุณต้องการโจมตี';
+  } else if (role.abilities.includes('investigate')) {
+    actionTitle.textContent = '🔮 ตรวจสอบผู้เล่น';
+    actionInstruction.textContent = 'เลือกผู้เล่นที่คุณต้องการตรวจสอบ';
+  } else if (role.abilities.includes('protect')) {
+    actionTitle.textContent = '🛡️ ปกป้องผู้เล่น';
+    actionInstruction.textContent = 'เลือกผู้เล่นที่คุณต้องการปกป้อง';
+  }
+  
+  updateGameRoomDisplay(gameState.currentRoom);
+}
+
+function selectPlayer(playerId) {
+  if (!playerId) return;
+  
+  gameState.selectedPlayer = playerId;
+  const confirmBtn = document.getElementById('confirmActionBtn');
+  if (confirmBtn) confirmBtn.disabled = false;
+  
+  // Remove previous selections
+  document.querySelectorAll('.player-in-room').forEach(p => p.classList.remove('selected'));
+  
+  // Find and highlight selected player
+  if (gameState.currentRoom && gameState.currentRoom.players) {
+    const playerIndex = gameState.currentRoom.players.findIndex(p => p && p.id === playerId);
+    if (playerIndex >= 0) {
+      const playerElements = document.querySelectorAll('.player-in-room');
+      if (playerElements[playerIndex]) {
+        playerElements[playerIndex].classList.add('selected');
+      }
+    }
+  }
+  
+  const player = gameState.currentRoom?.players?.find(p => p && p.id === playerId);
+  if (player) {
+    showMessage(`เลือก: ${player.nickname}`, 'info');
+  }
+}
+
+function confirmAction() {
+  if (!gameState.selectedPlayer || !gameState.isConnected) {
+    showMessage('กรุณาเลือกผู้เล่น', 'error');
+    return;
+  }
+  
+  socket.emit('nightAction', { target: gameState.selectedPlayer }, (response) => {
+    if (response && response.success) {
+      const actionArea = document.getElementById('actionArea');
+      if (actionArea) actionArea.classList.add('hidden');
+      gameState.selectedPlayer = null;
+      showMessage('ทำการกระทำเสร็จสิ้น กรุณารอผู้เล่นอื่น', 'success');
+      addGameLog(`✅ คุณได้ทำการกระทำในคืนนี้แล้ว`);
+    } else {
+      showMessage(response?.error || 'ไม่สามารถทำการกระทำได้', 'error');
+    }
+  });
+}
+
+function startDayPhase(dayNumber) {
+  const gamePhaseIndicator = document.getElementById('gamePhaseIndicator');
+  const phaseTitle = document.getElementById('phaseTitle');
+  
+  if (gamePhaseIndicator) gamePhaseIndicator.classList.remove('hidden');
+  if (phaseTitle) phaseTitle.textContent = `☀️ กลางวันที่ ${dayNumber || 1}`;
+  
+  // Reset voting-related state
+  gameState.hasVoted = false;
+  gameState.lastVotedPlayer = null;
+  
+  // Remove voting phase overlay and styling
+  document.body.classList.remove('voting-phase');
+  const votingStyle = document.getElementById('votingPhaseStyle');
+  if (votingStyle) votingStyle.remove();
+  
+  // Clear any vote styling from players
+  document.querySelectorAll('.player-in-room').forEach(div => {
+    div.classList.remove('voted-by-me');
+    const card = div.querySelector('.player-card-img');
+    if (card) card.style.filter = '';
+  });
+  
+  addGameLog(`☀️ รุ่งเช้าวันใหม่! ได้เวลาพูดคุยและหาหมาป่า`, true);
+  updateGameRoomDisplay(gameState.currentRoom);
+}
+
+function votePlayer(playerId) {
+  if (!playerId || !gameState.currentRoom || !gameState.isConnected) {
+    showMessage('ไม่สามารถโหวตได้ในขณะนี้', 'error');
+    return;
+  }
+
+  if (gameState.hasVoted) {
+    showMessage('คุณได้โหวตไปแล้ว', 'error');
+    return;
+  }
+  
+  const player = gameState.currentRoom.players.find(p => p && p.id === playerId);
+  if (!player) {
+    showMessage('ไม่พบผู้เล่นที่เลือก', 'error');
+    return;
+  }
+
+  if (!player.isAlive) {
+    showMessage('ไม่สามารถโหวตผู้เล่นที่ตายแล้ว', 'error');
+    return;
+  }
+  
+  const playerCard = document.querySelector(`[data-player-id="${playerId}"] .player-card-img`);
+  if (playerCard) {
+    playerCard.classList.add('shake');
+    setTimeout(() => {
+      playerCard.classList.remove('shake');
+      // Show vote confirmation modal
+      const modal = document.getElementById('voteConfirmModal');
+      const targetNameSpan = modal.querySelector('.vote-target-name');
+      const confirmBtn = document.getElementById('confirmVoteBtn');
+      const cancelBtn = document.getElementById('cancelVoteBtn');
+
+      if (!modal || !targetNameSpan || !confirmBtn || !cancelBtn) {
+        console.error('Required DOM elements for voting not found');
+        return;
+      }
+
+      targetNameSpan.textContent = player.nickname;
+      modal.classList.add('show');
+
+      const handleConfirm = () => {
+        if (!socket || !gameState.isConnected) {
+          showMessage('ไม่สามารถโหวตได้ในขณะนี้', 'error');
+          modal.classList.remove('show');
+          cleanup();
+          return;
+        }
+
+        socket.emit('vote', { target: playerId }, (response) => {
+          if (response && response.success) {
+            gameState.hasVoted = true;
+            gameState.lastVotedPlayer = playerId; // Store last voted player
+            showMessage(`คุณได้โหวต ${player.nickname} แล้ว`, 'success');
+            addGameLog(`✅ คุณได้โหวต ${player.nickname}`);
+            
+            // Reset vote style for all players first
+            document.querySelectorAll('.player-in-room').forEach(div => {
+              div.classList.remove('voted-by-me');
+              const card = div.querySelector('.player-card-img');
+              if (card) card.style.filter = '';
+            });
+
+            // Apply vote style to selected player
+            const playerDiv = document.querySelector(`[data-player-id="${playerId}"]`);
+            if (playerDiv) {
+              playerDiv.classList.add('voted-by-me');
+              const card = playerDiv.querySelector('.player-card-img');
+              if (card) card.style.filter = 'brightness(0.7)';
+            }
+
+            updateGameRoomDisplay(gameState.currentRoom);
+          } else {
+            showMessage(response?.error || 'ไม่สามารถโหวตได้', 'error');
+            gameState.hasVoted = false;
+            gameState.lastVotedPlayer = null;
+          }
+        });
+        modal.classList.remove('show');
+        cleanup();
+      };
+
+      const handleCancel = () => {
+        modal.classList.remove('show');
+        cleanup();
+      };
+
+      const handleOutsideClick = (e) => {
+        if (e.target === modal) {
+          modal.classList.remove('show');
+          cleanup();
+        }
+      };
+
+      const cleanup = () => {
+        if (confirmBtn) confirmBtn.removeEventListener('click', handleConfirm);
+        if (cancelBtn) cancelBtn.removeEventListener('click', handleCancel);
+        if (modal) modal.removeEventListener('click', handleOutsideClick);
+      };
+
+      confirmBtn.addEventListener('click', handleConfirm);
+      cancelBtn.addEventListener('click', handleCancel);
+      modal.addEventListener('click', handleOutsideClick);
+    }, 500); // Wait for shake animation to finish
+  }
+}
+
+function startVotingPhase() {
+  gameState.gamePhase = 'voting';
+  gameState.hasVoted = false;
+  gameState.lastVotedPlayer = null; // Reset last voted player
+  
+  const phaseTitle = document.getElementById('phaseTitle');
+  if (phaseTitle) phaseTitle.textContent = '🗳️ เวลาโหวต';
+
+  // Clear any previous vote styling
+  document.querySelectorAll('.player-in-room').forEach(div => {
+    div.classList.remove('voted-by-me');
+    const card = div.querySelector('.player-card-img');
+    if (card) card.style.filter = '';
+  });
+
+  // ยังคงใช้พื้นหลังของเฟสกลางวัน แต่เพิ่ม overlay สำหรับเฟสโหวต
+  document.body.classList.remove('night');
+  document.body.classList.add('day');
+  
+  // Clean up old voting phase style if exists
+  const oldStyle = document.getElementById('votingPhaseStyle');
+  if (oldStyle) oldStyle.remove();
+  
+  // เพิ่ม style สำหรับ voting phase overlay
+  const style = document.createElement('style');
+  style.id = 'votingPhaseStyle';
+  style.textContent = `
+    body.day.voting-phase::after {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      z-index: 1;
+      pointer-events: none;
+    }
+    .player-in-room.voted-by-me {
+      border-color: #ff9800;
+      box-shadow: 0 0 15px rgba(255, 152, 0, 0.5);
+    }
+    .player-in-room.selectable:hover .player-card-img {
+      transform: translateY(-10px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+      transition: all 0.3s ease;
+    }
+  `;
+  document.head.appendChild(style);
+  document.body.classList.add('voting-phase');
+
+  addGameLog(`🗳️ เริ่มการโหวต! เลือกผู้เล่นที่คุณสงสัย`, true);
+  showMessage('เลือกผู้เล่นที่คุณต้องการโหวตออก', 'info');
+
+  const actionArea = document.getElementById('actionArea');
+  if (actionArea) actionArea.classList.add('hidden');
+
+  updateGameRoomDisplay(gameState.currentRoom);
+}
+
+function startPhaseTimer(durationInSeconds) {
+  if (phaseTimer) {
+    clearInterval(phaseTimer);
+  }
+  
+  let remainingTime = Math.max(0, durationInSeconds);
+  const timerDisplay = document.getElementById('timerDisplay');
+  const timerTime = document.getElementById('timerTime');
+  
+  if (timerDisplay) timerDisplay.classList.remove('hidden');
+  
+  updateTimerDisplay(remainingTime);
+  
+  phaseTimer = setInterval(() => {
+    remainingTime--;
+    updateTimerDisplay(remainingTime);
+    
+    if (remainingTime <= 0) {
+      clearInterval(phaseTimer);
+      phaseTimer = null;
+      if (timerTime) timerTime.textContent = '00:00';
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay(seconds) {
+  const timerTime = document.getElementById('timerTime');
+  if (!timerTime) return;
+  
+  const minutes = Math.floor(Math.max(0, seconds) / 60);
+  const secs = Math.max(0, seconds) % 60;
+  timerTime.textContent = `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  
+  if (seconds <= 10) {
+    timerTime.style.color = '#ff4444';
+  } else if (seconds <= 30) {
+    timerTime.style.color = '#ff9800';
+  } else {
+    timerTime.style.color = '#ff6b6b';
+  }
+}
+
+// Event listeners and initialization
+document.addEventListener('DOMContentLoaded', function() {
+  initSocket();
+  
+  const nicknameInput = document.getElementById('nicknameInput');
+  const roomNameInput = document.getElementById('roomName');
+  
+  if (nicknameInput) {
+    nicknameInput.focus();
+    nicknameInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        setNickname();
+      }
+    });
+  }
+  
+  if (roomNameInput) {
+    roomNameInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        createRoom();
+      }
+    });
+  }
+  
+  // Handle page visibility changes
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible' && !gameState.isConnected) {
+      initSocket();
+    }
+  });
+  
+  // Handle window beforeunload
+  window.addEventListener('beforeunload', function() {
+    if (socket && socket.connected) {
+      socket.disconnect();
+    }
+  });
+});
+</script>
+
+</body>
+</html>
